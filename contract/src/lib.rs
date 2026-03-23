@@ -1,7 +1,10 @@
 #![no_std]
 
+pub mod errors;
 pub mod storage_types;
-pub use crate::storage_types::{DataKey, Market, Prediction};
+
+pub use crate::errors::InsightArenaError;
+pub use crate::storage_types::{DataKey, InviteCode, Market, Prediction, Season, UserProfile};
 
 use soroban_sdk::{contract, contractimpl};
 
