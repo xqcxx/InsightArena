@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, TrendingUp, Trophy, Gift, Users, Clock } from "lucide-react";
+import { TrendingUp, Trophy, Gift, Users } from "lucide-react";
 
 interface NotificationItem {
   id: string;
@@ -11,13 +11,13 @@ interface NotificationItem {
   isRead: boolean;
 }
 
-// Mock data for demonstration
+// Mock data matching the Figma design
 const mockNotifications: NotificationItem[] = [
   {
     id: "1",
     type: "market",
     icon: "trend",
-    message: "Your prediction on 'Bitcoin Price by EOY' is currently winning!",
+    message: "Your BTC prediction settles in 3 hours",
     timestamp: "2h ago",
     isRead: false,
   },
@@ -25,15 +25,15 @@ const mockNotifications: NotificationItem[] = [
     id: "2",
     type: "competition",
     icon: "trophy",
-    message: "You've moved up to 3rd place in the Weekly Leaderboard",
-    timestamp: "4h ago",
+    message: "You moved up 3 spots on leaderboard",
+    timestamp: "5h ago",
     isRead: false,
   },
   {
     id: "3",
     type: "reward",
     icon: "gift",
-    message: "Congratulations! You've earned 50 XLM from your winning prediction",
+    message: "Rewards from Weekend Market Clash claimable",
     timestamp: "1d ago",
     isRead: true,
   },
@@ -41,16 +41,8 @@ const mockNotifications: NotificationItem[] = [
     id: "4",
     type: "social",
     icon: "users",
-    message: "Alex invited you to join the 'Crypto Predictions' private competition",
-    timestamp: "2d ago",
-    isRead: true,
-  },
-  {
-    id: "5",
-    type: "market",
-    icon: "trend",
-    message: "Market 'US Election Results' closes in 24 hours",
-    timestamp: "3d ago",
+    message: "Invite to Crypto Elite League",
+    timestamp: "1d ago",
     isRead: true,
   },
 ];
@@ -63,38 +55,33 @@ const iconMap = {
 };
 
 const iconColorMap = {
-  trend: "text-blue-400",
-  trophy: "text-yellow-400",
-  gift: "text-green-400",
-  users: "text-purple-400",
+  trend: "text-[#4FD1C5]", // Teal/cyan color from design
+  trophy: "text-[#4FD1C5]", // Teal/cyan color from design  
+  gift: "text-[#F5C451]", // Gold color from design
+  users: "text-[#A78BFA]", // Purple color from design
 };
 
 const iconBgMap = {
-  trend: "bg-blue-400/10",
-  trophy: "bg-yellow-400/10",
-  gift: "bg-green-400/10",
-  users: "bg-purple-400/10",
+  trend: "bg-[#4FD1C5]/10",
+  trophy: "bg-[#4FD1C5]/10", 
+  gift: "bg-[#F5C451]/10",
+  users: "bg-[#A78BFA]/10",
 };
 
 export default function NotificationsCard() {
   const unreadCount = mockNotifications.filter(n => !n.isRead).length;
 
   return (
-    <div className="relative bg-[#0f172a] rounded-2xl p-5 w-full shadow-lg overflow-hidden">
-      {/* TOP GOLD EDGE (same gold as UI) */}
-      <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#F5C451]/70 rounded-t-2xl" />
-
+    <div className="relative bg-[#1e293b] rounded-2xl p-6 w-full shadow-lg overflow-hidden border border-gray-700/30">
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-3">
-          <Bell className="h-5 w-5 text-[#F5C451]" />
-          <h2 className="text-white font-semibold">Notifications</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-white font-semibold text-lg">Notifications</h2>
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <div className="w-2 h-2 bg-[#4FD1C5] rounded-full" />
+          )}
+          <div className="w-2 h-2 bg-red-500 rounded-full" />
         </div>
-        {unreadCount > 0 && (
-          <div className="relative">
-            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-          </div>
-        )}
       </div>
 
       {/* Notifications List */}
@@ -105,44 +92,31 @@ export default function NotificationsCard() {
           
           return (
             <div key={notification.id}>
-              <div className={`flex items-start gap-3 py-3 ${!notification.isRead ? 'opacity-100' : 'opacity-70'}`}>
+              <div className="flex items-start gap-4 py-4">
                 {/* Icon Box */}
-                <div className={`flex-shrink-0 w-8 h-8 rounded-lg ${iconBgMap[notification.icon]} flex items-center justify-center`}>
-                  <IconComponent className={`h-4 w-4 ${iconColorMap[notification.icon]}`} />
+                <div className={`flex-shrink-0 w-10 h-10 rounded-xl ${iconBgMap[notification.icon]} flex items-center justify-center`}>
+                  <IconComponent className={`h-5 w-5 ${iconColorMap[notification.icon]}`} />
                 </div>
                 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-300 leading-relaxed">
+                  <p className="text-gray-300 text-sm leading-relaxed mb-1">
                     {notification.message}
                   </p>
-                  <div className="flex items-center gap-1 mt-1">
-                    <Clock className="h-3 w-3 text-gray-500" />
-                    <span className="text-xs text-gray-500">
-                      {notification.timestamp}
-                    </span>
-                  </div>
+                  <span className="text-xs text-gray-500">
+                    {notification.timestamp}
+                  </span>
                 </div>
-                
-                {/* Unread indicator */}
-                {!notification.isRead && (
-                  <div className="flex-shrink-0 w-2 h-2 bg-[#4FD1C5] rounded-full mt-2" />
-                )}
               </div>
               
               {/* Divider line (subtle, matching Figma stroke color) */}
               {!isLast && (
-                <div className="border-b border-gray-700/30" />
+                <div className="border-b border-gray-600/20 ml-14" />
               )}
             </div>
           );
         })}
       </div>
-
-      {/* View All Button */}
-      <button className="mt-4 w-full py-2 rounded-lg border border-gray-600/30 text-gray-300 text-sm font-medium hover:bg-white/5 transition">
-        View All Notifications
-      </button>
     </div>
   );
 }

@@ -9,8 +9,33 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-space-grotesk)', 'var(--font-inter)', 'var(--font-geist-sans)', 'sans-serif'],
-        mono: ['JetBrains Mono', 'var(--font-geist-mono)', 'monospace'],
+        sans: [
+          'system-ui',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          '"Segoe UI"',
+          'Roboto',
+          '"Helvetica Neue"',
+          'Arial',
+          '"Noto Sans"',
+          'sans-serif',
+          '"Apple Color Emoji"',
+          '"Segoe UI Emoji"',
+          '"Segoe UI Symbol"',
+          '"Noto Color Emoji"'
+        ],
+        mono: [
+          '"SF Mono"',
+          'Monaco',
+          'Inconsolata',
+          '"Roboto Mono"',
+          '"Source Code Pro"',
+          'Consolas',
+          '"Liberation Mono"',
+          'Menlo',
+          'Courier',
+          'monospace'
+        ],
       },
     },
   },
