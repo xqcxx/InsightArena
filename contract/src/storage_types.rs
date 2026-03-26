@@ -26,6 +26,8 @@ pub enum DataKey {
     SeasonCount,
     /// Emergency pause flag. Used to halt sensitive operations across the platform.
     Paused,
+    /// Singleton. Accumulates total protocol fees collected across all markets.
+    Treasury,
 }
 
 #[contracttype]

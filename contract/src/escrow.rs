@@ -1,7 +1,8 @@
 use soroban_sdk::{token, Address, Env};
 
-use crate::config;
+use crate::config::{self, PERSISTENT_BUMP, PERSISTENT_THRESHOLD};
 use crate::errors::InsightArenaError;
+use crate::storage_types::DataKey;
 
 /// Transfer `amount` stroops from `predictor` into the contract's escrow.
 ///
@@ -67,6 +68,38 @@ pub fn release_payout(env: &Env, to: &Address, amount: i128) -> Result<(), Insig
 
     client.transfer(&contract, to, &amount);
     Ok(())
+}
+
+/// Increment the treasury balance by `fee_amount` stroops.
+///
+/// Called internally after each market resolution to record collected protocol fees.
+pub fn add_to_treasury_balance(env: &Env, fee_amount: i128) {
+    let current: i128 = env
+        .storage()
+        .persistent()
+        .get(&DataKey::Treasury)
+        .unwrap_or(0);
+    env.storage()
+        .persistent()
+        .set(&DataKey::Treasury, &(current + fee_amount));
+    env.storage()
+        .persistent()
+        .extend_ttl(&DataKey::Treasury, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
+}
+
+/// Return the total protocol fees accumulated in the treasury.
+///
+/// Returns `0` if no fees have ever been collected. Never panics.
+pub fn get_treasury_balance(env: &Env) -> i128 {
+    let balance: i128 = env
+        .storage()
+        .persistent()
+        .get(&DataKey::Treasury)
+        .unwrap_or(0);
+    env.storage()
+        .persistent()
+        .extend_ttl(&DataKey::Treasury, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
+    balance
 }
 
 #[cfg(test)]
@@ -208,5 +241,32 @@ mod escrow_tests {
 
         let result = env.as_contract(&client.address, || release_payout(&env, &recipient, 0));
         assert_eq!(result, Err(InsightArenaError::InvalidInput));
+    }
+
+    #[test]
+    fn test_get_treasury_uninitialized() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let xlm_token = register_token(&env);
+        let client = deploy(&env, &xlm_token);
+
+        let balance = env.as_contract(&client.address, || super::get_treasury_balance(&env));
+        assert_eq!(balance, 0);
+    }
+
+    #[test]
+    fn test_get_treasury_after_market_fees() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let xlm_token = register_token(&env);
+        let client = deploy(&env, &xlm_token);
+
+        env.as_contract(&client.address, || {
+            super::add_to_treasury_balance(&env, 500_000);
+            super::add_to_treasury_balance(&env, 300_000);
+        });
+
+        let balance = env.as_contract(&client.address, || super::get_treasury_balance(&env));
+        assert_eq!(balance, 800_000);
     }
 }
