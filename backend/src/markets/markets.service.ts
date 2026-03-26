@@ -4,6 +4,7 @@ import {
   BadGatewayException,
   Logger,
 } from '@nestjs/common';
+import { PredictionStatsDto } from './dto/prediction-stats.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Market } from './entities/market.entity';
@@ -25,6 +26,31 @@ export class MarketsService {
     private readonly marketsRepository: Repository<Market>,
     private readonly usersService: UsersService,
   ) {}
+
+  /**
+   * Get prediction statistics for a market - anonymous outcome counts only
+   * Does NOT expose individual user stakes or identities
+   */
+  async getPredictionStats(marketId: string): Promise<PredictionStatsDto[]> {
+    // First verify market exists
+    const market = await this.findByIdOrOnChainId(marketId);
+
+    // TODO: Call contract to get real prediction data
+    // For now, return mock data based on market outcomes
+    const mockStats: PredictionStatsDto[] = market.outcome_options.map(
+      (outcome, index) => ({
+        outcome,
+        count: index === 0 ? 15 : 8, // Mock: first option has more predictions
+        total_staked_stroops: index === 0 ? '1500000' : '800000', // Mock stakes in stroops
+      }),
+    );
+
+    this.logger.log(
+      `Retrieved prediction stats for market "${market.title}" (${market.id}) - ${mockStats.length} outcomes`,
+    );
+
+    return mockStats;
+  }
 
   /**
    * Create a new market: call Soroban contract, then persist to DB.
@@ -64,7 +90,10 @@ export class MarketsService {
 
       return await this.marketsRepository.save(market);
     } catch (err) {
-      this.logger.error('Failed to save market to DB after Soroban success', err);
+      this.logger.error(
+        'Failed to save market to DB after Soroban success',
+        err,
+      );
       throw new BadGatewayException(
         'Market created on-chain but failed to save to database',
       );
