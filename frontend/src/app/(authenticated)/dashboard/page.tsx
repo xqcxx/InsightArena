@@ -1,5 +1,5 @@
+import QuickActions from "@/component/QuickActions";
 import CompetitionsJoined from "@/component/CompetitionsJoined";
-
 export default function DashboardPage() {
   return (
     <div className="space-y-6">
@@ -26,6 +26,7 @@ export default function DashboardPage() {
 
       {/* Competitions Joined Section */}
       <CompetitionsJoined />
+      <QuickActions />
       
       <div className="bg-[#0f172a] rounded-2xl p-6 border border-gray-700/30">
         <h3 className="text-white font-semibold mb-4">Recent Activity</h3>
