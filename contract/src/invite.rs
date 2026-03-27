@@ -148,6 +148,45 @@ fn byte_to_char(b: u8) -> u8 {
     }
 }
 
+/// Revoke an invite code, deactivating it for future redemptions.
+/// Only the code's creator can revoke.
+///
+/// On success:
+/// - `invite.is_active = false`
+/// - Updated `InviteCode` persisted with TTL bump
+/// - `InviteCodeRevoked` event emitted
+///
+/// Does NOT affect users already in MarketAllowlist.
+pub fn revoke_invite_code(
+    env: Env,
+    creator: Address,
+    code: Symbol,
+) -> Result<(), InsightArenaError> {
+    creator.require_auth();
+
+    let invite_key = DataKey::InviteCode(code.clone());
+    let mut invite: InviteCode = env
+        .storage()
+        .persistent()
+        .get(&invite_key)
+        .ok_or(InsightArenaError::InvalidInviteCode)?;
+
+    if invite.creator != creator {
+        return Err(InsightArenaError::Unauthorized);
+    }
+
+    invite.is_active = false;
+    env.storage().persistent().set(&invite_key, &invite);
+    ttl::extend_invite_ttl(&env, &code);
+
+    env.events().publish(
+        (symbol_short!("invite"), symbol_short!("revoked")),
+        (code.clone(), creator.clone()),
+    );
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -155,7 +194,7 @@ mod tests {
     use crate::InsightArenaContract;
     use crate::InsightArenaContractClient;
     use soroban_sdk::testutils::{Address as _, Ledger as _};
-    use soroban_sdk::{vec, String};
+    use soroban_sdk::{vec, String, Symbol};
 
     fn setup_test(env: &Env) -> (Address, Address, u64, InsightArenaContractClient<'_>) {
         env.mock_all_auths();

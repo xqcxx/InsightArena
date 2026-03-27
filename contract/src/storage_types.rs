@@ -40,6 +40,8 @@ pub enum DataKey {
     Categories,
     /// Keyed by category symbol. Stores market IDs in creation order for that category.
     CategoryIndex(Symbol),
+    /// Temporary storage lock for escrow operations (prevents reentrancy)
+    EscrowLock,
 }
 
 #[contracttype]

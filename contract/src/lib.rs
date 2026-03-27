@@ -8,9 +8,9 @@ pub mod market;
 pub mod oracle;
 pub mod prediction;
 pub mod season;
+pub mod security;
 pub mod storage_types;
 pub mod ttl;
-
 pub use crate::config::Config;
 pub use crate::errors::InsightArenaError;
 pub use crate::market::CreateMarketParams;
