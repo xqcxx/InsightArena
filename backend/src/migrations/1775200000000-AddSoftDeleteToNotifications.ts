@@ -4,10 +4,14 @@ export class AddSoftDeleteToNotifications1775200000000 implements MigrationInter
   name = 'AddSoftDeleteToNotifications1775200000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "notifications" ADD "deleted_at" TIMESTAMP`);
+    await queryRunner.query(
+      `ALTER TABLE "notifications" ADD "deleted_at" TIMESTAMP`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "notifications" DROP COLUMN "deleted_at"`);
+    await queryRunner.query(
+      `ALTER TABLE "notifications" DROP COLUMN "deleted_at"`,
+    );
   }
 }

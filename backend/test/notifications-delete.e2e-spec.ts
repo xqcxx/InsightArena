@@ -4,7 +4,10 @@ import request from 'supertest';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotificationsController } from '../src/notifications/notifications.controller';
 import { NotificationsService } from '../src/notifications/notifications.service';
-import { Notification, NotificationType } from '../src/notifications/entities/notification.entity';
+import {
+  Notification,
+  NotificationType,
+} from '../src/notifications/entities/notification.entity';
 import { JwtAuthGuard } from '../src/common/guards/jwt-auth.guard';
 import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
@@ -47,7 +50,9 @@ describe('DELETE /notifications/:id (E2E)', () => {
       .overrideGuard(JwtAuthGuard)
       .useValue({
         canActivate: (context: ExecutionContext) => {
-          const req = context.switchToHttp().getRequest<{ user: Partial<User> }>();
+          const req = context
+            .switchToHttp()
+            .getRequest<{ user: Partial<User> }>();
           req.user = mockUser;
           return true;
         },
@@ -59,7 +64,8 @@ describe('DELETE /notifications/:id (E2E)', () => {
     app.useGlobalFilters(new HttpExceptionFilter());
     await app.init();
 
-    notificationsService = moduleFixture.get<NotificationsService>(NotificationsService);
+    notificationsService =
+      moduleFixture.get<NotificationsService>(NotificationsService);
   });
 
   afterEach(async () => {
@@ -73,6 +79,7 @@ describe('DELETE /notifications/:id (E2E)', () => {
       .delete(`/notifications/${mockNotification.id}`)
       .expect(HttpStatus.NO_CONTENT);
 
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(notificationsService.remove).toHaveBeenCalledWith(
       mockNotification.id,
       mockUser.id,
@@ -81,6 +88,7 @@ describe('DELETE /notifications/:id (E2E)', () => {
 
   it('should return 404 when notification is not found or not owned', async () => {
     const errorMsg = 'Notification not found';
+
     jest.spyOn(notificationsService, 'remove').mockRejectedValue({
       status: HttpStatus.NOT_FOUND,
       message: errorMsg,
