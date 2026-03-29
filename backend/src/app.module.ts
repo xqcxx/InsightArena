@@ -12,6 +12,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { CommonModule } from './common/common.module';
 import { AdminModule } from './admin/admin.module';
+import { AchievementsModule } from './achievements/achievements.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { CompetitionsModule } from './competitions/competitions.module';
@@ -77,6 +78,7 @@ import { UsersModule } from './users/users.module';
     NotificationsModule,
     SorobanModule,
     AdminModule,
+    AchievementsModule,
     CommonModule,
     AnalyticsModule,
   ],

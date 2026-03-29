@@ -155,7 +155,11 @@ describe('UsersService', () => {
 
       jest
         .spyOn(participantsRepository, 'createQueryBuilder')
-        .mockReturnValue(queryBuilder as any);
+        .mockReturnValue(
+          queryBuilder as any as ReturnType<
+            typeof participantsRepository.createQueryBuilder
+          >,
+        );
 
       const result = await service.findUserCompetitions(
         mockUser.stellar_address,
@@ -231,7 +235,11 @@ describe('UsersService', () => {
 
       jest
         .spyOn(predictionsRepository, 'createQueryBuilder')
-        .mockReturnValue(queryBuilder as any);
+        .mockReturnValue(
+          queryBuilder as any as ReturnType<
+            typeof predictionsRepository.createQueryBuilder
+          >,
+        );
 
       const result = await service.findPublicPredictionsByAddress(
         mockUser.stellar_address,
@@ -269,7 +277,11 @@ describe('UsersService', () => {
       queryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
       jest
         .spyOn(marketsRepository, 'createQueryBuilder')
-        .mockReturnValue(queryBuilder as any);
+        .mockReturnValue(
+          queryBuilder as any as ReturnType<
+            typeof marketsRepository.createQueryBuilder
+          >,
+        );
 
       const result = await service.findMarketsByAddress(
         mockUser.stellar_address,
@@ -292,7 +304,11 @@ describe('UsersService', () => {
       queryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
       jest
         .spyOn(marketsRepository, 'createQueryBuilder')
-        .mockReturnValue(queryBuilder as any);
+        .mockReturnValue(
+          queryBuilder as any as ReturnType<
+            typeof marketsRepository.createQueryBuilder
+          >,
+        );
 
       await service.findMarketsByAddress(mockUser.stellar_address, {
         status: UserMarketFilterStatus.Active,
@@ -308,7 +324,11 @@ describe('UsersService', () => {
       queryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
       jest
         .spyOn(marketsRepository, 'createQueryBuilder')
-        .mockReturnValue(queryBuilder as any);
+        .mockReturnValue(
+          queryBuilder as any as ReturnType<
+            typeof marketsRepository.createQueryBuilder
+          >,
+        );
 
       await service.findMarketsByAddress(mockUser.stellar_address, {
         status: UserMarketFilterStatus.Resolved,
@@ -324,7 +344,11 @@ describe('UsersService', () => {
       queryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
       jest
         .spyOn(marketsRepository, 'createQueryBuilder')
-        .mockReturnValue(queryBuilder as any);
+        .mockReturnValue(
+          queryBuilder as any as ReturnType<
+            typeof marketsRepository.createQueryBuilder
+          >,
+        );
 
       await service.findMarketsByAddress(mockUser.stellar_address, {
         status: UserMarketFilterStatus.Cancelled,
@@ -340,7 +364,11 @@ describe('UsersService', () => {
       queryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
       jest
         .spyOn(marketsRepository, 'createQueryBuilder')
-        .mockReturnValue(queryBuilder as any);
+        .mockReturnValue(
+          queryBuilder as any as ReturnType<
+            typeof marketsRepository.createQueryBuilder
+          >,
+        );
 
       await service.findMarketsByAddress(mockUser.stellar_address, {
         sort_by: UserMarketsSortBy.ParticipantCount,

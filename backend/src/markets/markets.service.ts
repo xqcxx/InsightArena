@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { PredictionStatsDto } from './dto/prediction-stats.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Market } from './entities/market.entity';
 import { Comment } from './entities/comment.entity';
 import { MarketTemplate } from './entities/market-template.entity';
@@ -36,6 +36,7 @@ export class MarketsService {
     private readonly marketTemplatesRepository: Repository<MarketTemplate>,
     private readonly usersService: UsersService,
     private readonly sorobanService: SorobanService,
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
@@ -69,6 +70,80 @@ export class MarketsService {
    */
   async create(dto: CreateMarketDto, user: User): Promise<Market> {
     return this.createMarket(dto, user);
+  }
+
+  /**
+   * Bulk create markets with transaction support.
+   * Validates all markets before creating any.
+   * Rolls back all if any creation fails.
+   */
+  async createBulk(dtos: CreateMarketDto[], user: User): Promise<Market[]> {
+    // Validate all DTOs first
+    for (const dto of dtos) {
+      const endTime = new Date(dto.end_time);
+      if (endTime <= new Date()) {
+        throw new BadRequestException('end_time must be in the future');
+      }
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const createdMarkets: Market[] = [];
+
+      for (const dto of dtos) {
+        // Call Soroban contract
+        let onChainMarketId: string;
+        try {
+          const result = await this.sorobanService.createMarket(
+            dto.title,
+            dto.description,
+            dto.category,
+            dto.outcome_options,
+            dto.end_time,
+            dto.resolution_time,
+          );
+          onChainMarketId = result.market_id;
+        } catch (err) {
+          this.logger.error('Soroban createMarket failed', err);
+          throw new BadGatewayException('Failed to create market on Soroban');
+        }
+
+        // Create market entity
+        const market = queryRunner.manager.create(Market, {
+          on_chain_market_id: onChainMarketId,
+          creator: user,
+          title: dto.title,
+          description: dto.description,
+          category: dto.category,
+          outcome_options: dto.outcome_options,
+          end_time: new Date(dto.end_time),
+          resolution_time: new Date(dto.resolution_time),
+          is_public: dto.is_public,
+          is_resolved: false,
+          is_cancelled: false,
+          total_pool_stroops: '0',
+          participant_count: 0,
+        });
+
+        const saved = await queryRunner.manager.save(market);
+        createdMarkets.push(saved);
+        this.logger.log(
+          `Bulk created market "${dto.title}" with on_chain_id: ${onChainMarketId}`,
+        );
+      }
+
+      await queryRunner.commitTransaction();
+      return createdMarkets;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error('Bulk market creation failed, rolling back', err);
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async createMarket(dto: CreateMarketDto, user: User): Promise<Market> {
@@ -351,5 +426,67 @@ export class MarketsService {
     return this.marketTemplatesRepository.find({
       order: { category: 'ASC', title: 'ASC' },
     });
+  }
+
+  /**
+   * Generate a detailed market report with anonymized predictions
+   */
+  async generateMarketReport(marketId: string): Promise<any> {
+    const market = await this.findByIdOrOnChainId(marketId);
+
+    // Get prediction stats (anonymized)
+    const stats = await this.getPredictionStats(marketId);
+
+    const outcomeDistribution = stats.map((stat) => ({
+      outcome: stat.outcome,
+      count: stat.count,
+      percentage:
+        market.participant_count > 0
+          ? ((stat.count / market.participant_count) * 100).toFixed(2)
+          : '0.00',
+      total_staked_stroops: stat.total_staked_stroops,
+    }));
+
+    // Build timeline of events
+    const timeline = [
+      {
+        timestamp: market.created_at,
+        event_type: 'market_created',
+        description: `Market "${market.title}" was created`,
+      },
+      {
+        timestamp: market.end_time,
+        event_type: 'market_ended',
+        description: 'Market ended - no more predictions accepted',
+      },
+    ];
+
+    if (market.is_resolved) {
+      timeline.push({
+        timestamp: new Date(), // Use current time as resolution was just checked
+        event_type: 'market_resolved',
+        description: `Market resolved with outcome: ${market.resolved_outcome}`,
+      });
+    }
+
+    return {
+      market_id: market.id,
+      title: market.title,
+      description: market.description,
+      category: market.category,
+      created_at: market.created_at,
+      end_time: market.end_time,
+      resolution_time: market.resolution_time,
+      is_resolved: market.is_resolved,
+      resolved_outcome: market.resolved_outcome || null,
+      total_participants: market.participant_count,
+      total_pool_stroops: market.total_pool_stroops,
+      outcome_distribution: outcomeDistribution,
+      timeline: timeline.sort(
+        (a, b) =>
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+      ),
+      generated_at: new Date(),
+    };
   }
 }

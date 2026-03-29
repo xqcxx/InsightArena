@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { SorobanService } from '../soroban/soroban.service';
 import { UsersService } from '../users/users.service';
 import { User } from '../users/entities/user.entity';
@@ -21,6 +21,7 @@ describe('MarketsService', () => {
   let sorobanService: jest.Mocked<
     Pick<SorobanService, 'createMarket' | 'resolveMarket'>
   >;
+  let dataSource: jest.Mocked<DataSource>;
 
   const mockUser = {
     id: 'user-1',
@@ -53,6 +54,20 @@ describe('MarketsService', () => {
       resolveMarket: jest.fn(),
     };
 
+    dataSource = {
+      createQueryRunner: jest.fn().mockReturnValue({
+        connect: jest.fn(),
+        startTransaction: jest.fn(),
+        commitTransaction: jest.fn(),
+        rollbackTransaction: jest.fn(),
+        release: jest.fn(),
+        manager: {
+          create: jest.fn(),
+          save: jest.fn(),
+        },
+      }),
+    } as any;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MarketsService,
@@ -75,6 +90,10 @@ describe('MarketsService', () => {
         {
           provide: SorobanService,
           useValue: sorobanService,
+        },
+        {
+          provide: DataSource,
+          useValue: dataSource,
         },
       ],
     }).compile();
