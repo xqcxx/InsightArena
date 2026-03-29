@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Patch,
   Param,
   Body,
@@ -17,6 +18,7 @@ import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { BanUserDto } from './dto/ban-user.dto';
 import { ActivityLogQueryDto } from './dto/activity-log-query.dto';
 import { StatsResponseDto } from './dto/stats-response.dto';
+import { ResolveMarketDto } from './dto/resolve-market.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -61,5 +63,18 @@ export class AdminController {
     @Query() query: ActivityLogQueryDto,
   ) {
     return this.adminService.getUserActivity(id, query);
+  }
+
+  @Post('markets/:id/resolve')
+  async resolveMarket(
+    @Param('id') id: string,
+    @Body() dto: ResolveMarketDto,
+    @Request() req: any,
+  ) {
+    return this.adminService.adminResolveMarket(
+      id,
+      dto,
+      (req as { user: { id: string } }).user.id,
+    );
   }
 }

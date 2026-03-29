@@ -52,6 +52,8 @@ export class ActivityLoggingInterceptor implements NestInterceptor {
       return 'USER_BANNED';
     if (url.includes('/admin/users') && url.includes('/unban'))
       return 'USER_UNBANNED';
+    if (url.includes('/admin/markets') && url.includes('/resolve'))
+      return 'MARKET_RESOLVED_BY_ADMIN';
     return null;
   }
 
