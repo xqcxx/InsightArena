@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import { LeaderboardService } from './leaderboard.service';
 import { LeaderboardEntry } from './entities/leaderboard-entry.entity';
+import { LeaderboardHistory } from './entities/leaderboard-history.entity';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { LeaderboardQueryDto } from './dto/leaderboard-query.dto';
@@ -49,6 +50,12 @@ describe('LeaderboardService', () => {
     createQueryBuilder: jest.fn(() => mockQb),
   };
 
+  const mockHistoryRepository = {
+    createQueryBuilder: jest.fn(() => mockQb),
+    findOne: jest.fn(),
+    find: jest.fn(),
+  };
+
   const mockUsersService = {
     findAll: jest.fn(),
   };
@@ -64,6 +71,10 @@ describe('LeaderboardService', () => {
         {
           provide: getRepositoryToken(LeaderboardEntry),
           useValue: mockEntryRepository,
+        },
+        {
+          provide: getRepositoryToken(LeaderboardHistory),
+          useValue: mockHistoryRepository,
         },
         {
           provide: UsersService,
