@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, LessThan } from 'typeorm';
+import { Repository, DataSource, LessThan, IsNull } from 'typeorm';
 import { LeaderboardEntry } from './entities/leaderboard-entry.entity';
 import { LeaderboardHistory } from './entities/leaderboard-history.entity';
 import { UsersService } from '../users/users.service';
@@ -28,7 +28,7 @@ export class LeaderboardService {
     private readonly historyRepository: Repository<LeaderboardHistory>,
     private readonly usersService: UsersService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   async getLeaderboard(
     query: LeaderboardQueryDto,
@@ -57,9 +57,9 @@ export class LeaderboardService {
       const accuracyRate =
         entry.total_predictions > 0
           ? (
-              (entry.correct_predictions / entry.total_predictions) *
-              100
-            ).toFixed(1)
+            (entry.correct_predictions / entry.total_predictions) *
+            100
+          ).toFixed(1)
           : '0.0';
 
       return {
@@ -180,9 +180,9 @@ export class LeaderboardService {
         const accuracyRate =
           entry.total_predictions > 0
             ? (
-                (entry.correct_predictions / entry.total_predictions) *
-                100
-              ).toFixed(1)
+              (entry.correct_predictions / entry.total_predictions) *
+              100
+            ).toFixed(1)
             : '0.0';
 
         // Calculate rank change if user_id is specified
@@ -235,7 +235,7 @@ export class LeaderboardService {
     }
 
     const entry = await this.leaderboardRepository.findOne({
-      where: { user_id: user.id, season_id: null },
+      where: { user_id: user!.id, season_id: IsNull() },
     });
 
     if (!entry) {
@@ -247,8 +247,8 @@ export class LeaderboardService {
     const accuracyRate =
       entry.total_predictions > 0
         ? ((entry.correct_predictions / entry.total_predictions) * 100).toFixed(
-            1,
-          )
+          1,
+        )
         : '0.0';
 
     return {
