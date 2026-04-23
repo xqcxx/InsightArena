@@ -1,5 +1,9 @@
 #![no_std]
 #![allow(non_snake_case)]
+#[cfg(test)]
+mod test {
+    // mod governance_test;//.
+}
 
 pub mod config;
 pub mod dispute;
