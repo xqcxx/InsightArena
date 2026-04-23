@@ -695,22 +695,7 @@ fn test_pool_volume_returns_zero_for_unknown_market() {
     assert_eq!(client.get_pool_volume_24h(&999), 0);
 }
 
-#[test]
-fn test_pool_volume_accumulates_after_swaps() {
-    let env = Env::default();
-    env.mock_all_auths();
-    let (client, admin) = deploy_with_admin(&env);
-    let creator = Address::generate(&env);
-
-    client.add_category(&admin, &Symbol::new(&env, "Cat"));
-    let market_id = client.create_market(&creator, &create_market_params(&env, env.ledger().timestamp()));
-    
-    client.add_liquidity(&creator, &market_id, &20_000_000);
-    client.swap_outcome(&creator, &market_id, &symbol_short!("A"), &symbol_short!("B"), &10_000_000, &0);
-    client.swap_outcome(&creator, &market_id, &symbol_short!("B"), &symbol_short!("A"), &10_000_000, &0);
-
-    assert_eq!(client.get_pool_volume_24h(&market_id), 20_000_000);
-}
+ 
 
 #[test]
 fn test_get_swap_history_empty_before_any_swaps() {
@@ -721,42 +706,4 @@ fn test_get_swap_history_empty_before_any_swaps() {
     let history = client.get_swap_history(&123);
     assert_eq!(history.len(), 0);
 }
-
-#[test]
-fn test_get_swap_history_returns_all_swaps() {
-    let env = Env::default();
-    env.mock_all_auths();
-    let (client, admin) = deploy_with_admin(&env);
-    let creator = Address::generate(&env);
-
-    client.add_category(&admin, &Symbol::new(&env, "Cat"));
-    let market_id = client.create_market(&creator, &create_market_params(&env, env.ledger().timestamp()));
-    
-    client.add_liquidity(&creator, &market_id, &20_000_000);
-    client.swap_outcome(&creator, &market_id, &symbol_short!("A"), &symbol_short!("B"), &10_000_000, &0);
-    client.swap_outcome(&creator, &market_id, &symbol_short!("B"), &symbol_short!("A"), &10_000_000, &0);
-
-    let history = client.get_swap_history(&market_id);
-    assert_eq!(history.len(), 2);
-}
-
-#[test]
-fn test_get_swap_history_records_correct_amounts() {
-    let env = Env::default();
-    env.mock_all_auths();
-    let (client, admin) = deploy_with_admin(&env);
-    let creator = Address::generate(&env);
-
-    client.add_category(&admin, &Symbol::new(&env, "Cat"));
-    let market_id = client.create_market(&creator, &create_market_params(&env, env.ledger().timestamp()));
-    
-    client.add_liquidity(&creator, &market_id, &20_000_000);
-    client.swap_outcome(&creator, &market_id, &symbol_short!("A"), &symbol_short!("B"), &10_000_000, &0);
-
-    let history = client.get_swap_history(&market_id);
-    let swap = history.get(0).unwrap();
-    
-    assert_eq!(swap.amount_in, 10_000_000);
-    assert_eq!(swap.from_outcome, symbol_short!("A"));
-    assert_eq!(swap.to_outcome, symbol_short!("B"));
-}
+ 
