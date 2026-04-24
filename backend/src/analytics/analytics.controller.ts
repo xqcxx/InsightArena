@@ -1,9 +1,10 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
@@ -69,6 +70,12 @@ export class AnalyticsController {
   @Get('users/:address/trends')
   @Public()
   @ApiOperation({ summary: 'Get user performance trends over time' })
+  @ApiQuery({
+    name: 'days',
+    required: false,
+    type: Number,
+    description: 'Number of days to retrieve (default 30, max 90)',
+  })
   @ApiResponse({
     status: 200,
     description:
@@ -78,8 +85,9 @@ export class AnalyticsController {
   @ApiResponse({ status: 404, description: 'User not found' })
   async getUserTrends(
     @Param('address') address: string,
+    @Query('days') days?: number,
   ): Promise<UserTrendsDto> {
-    return this.analyticsService.getUserTrends(address);
+    return this.analyticsService.getUserTrends(address, days);
   }
 
   @Get('categories')

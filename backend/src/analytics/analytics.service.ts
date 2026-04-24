@@ -268,7 +268,13 @@ export class AnalyticsService {
   /**
    * Get user performance trends over time
    */
-  async getUserTrends(address: string): Promise<UserTrendsDto> {
+  async getUserTrends(
+    address: string,
+    days: number = 30,
+  ): Promise<UserTrendsDto> {
+    // Validate days parameter (default 30, max 90)
+    const validDays = Math.min(Math.max(days || 30, 1), 90);
+
     const user = await this.usersRepository.findOne({
       where: { stellar_address: address },
     });
@@ -277,16 +283,28 @@ export class AnalyticsService {
       throw new NotFoundException(`User with address ${address} not found`);
     }
 
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - validDays);
+
     const predictions = await this.predictionsRepository.find({
-      where: { user: { id: user.id } },
+      where: {
+        user: { id: user.id },
+        submitted_at: validDays < 90 ? undefined : undefined,
+      },
       relations: ['market'],
       order: { submitted_at: 'ASC' },
     });
 
-    const accuracyTrend = this.computeAccuracyTrend(predictions);
-    const volumeTrend = this.computeVolumeTrend(predictions);
-    const profitLossTrend = this.computeProfitLossTrend(predictions);
-    const categoryPerformance = this.computeCategoryPerformance(predictions);
+    // Filter predictions by date range
+    const filteredPredictions = predictions.filter(
+      (p) => p.submitted_at >= cutoffDate,
+    );
+
+    const accuracyTrend = this.computeAccuracyTrend(filteredPredictions);
+    const volumeTrend = this.computeVolumeTrend(filteredPredictions);
+    const profitLossTrend = this.computeProfitLossTrend(filteredPredictions);
+    const categoryPerformance =
+      this.computeCategoryPerformance(filteredPredictions);
 
     const bestCategory = categoryPerformance.reduce((best, current) =>
       current.accuracy_rate > (best?.accuracy_rate ?? 0) ? current : best,
