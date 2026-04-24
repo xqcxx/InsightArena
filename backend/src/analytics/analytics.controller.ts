@@ -33,7 +33,7 @@ export class AnalyticsController {
     type: DashboardKpisDto,
   })
   async getDashboard(@CurrentUser() user: User): Promise<DashboardKpisDto> {
-    return this.analyticsService.getDashboard(user);
+    return this.analyticsService.getDashboardKPIs(user);
   }
 
   @Get('markets/:id')
@@ -55,6 +55,24 @@ export class AnalyticsController {
   @Get('markets/:id/history')
   @Public()
   @ApiOperation({ summary: 'Get historical data for a market over time' })
+  @ApiQuery({
+    name: 'from',
+    required: false,
+    type: String,
+    description: 'Start date (ISO string)',
+  })
+  @ApiQuery({
+    name: 'to',
+    required: false,
+    type: String,
+    description: 'End date (ISO string)',
+  })
+  @ApiQuery({
+    name: 'interval',
+    required: false,
+    type: String,
+    description: 'Time interval (hour, day, week)',
+  })
   @ApiResponse({
     status: 200,
     description:
@@ -64,8 +82,11 @@ export class AnalyticsController {
   @ApiResponse({ status: 404, description: 'Market not found' })
   async getMarketHistory(
     @Param('id') id: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('interval') interval?: string, // TODO: Implement interval-based aggregation
   ): Promise<MarketHistoryResponseDto> {
-    return this.analyticsService.getMarketHistory(id);
+    return this.analyticsService.getMarketHistory(id, from, to, interval);
   }
 
   @Get('users/:address/trends')

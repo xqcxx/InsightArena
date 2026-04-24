@@ -170,7 +170,7 @@ describe('AnalyticsService', () => {
       }) as SelectQueryBuilder<Prediction>;
     });
 
-    const result = await service.getDashboard({
+    const result = await service.getDashboardKPIs({
       id: baseUser.id,
     } as User);
 
@@ -204,7 +204,7 @@ describe('AnalyticsService', () => {
       }) as SelectQueryBuilder<Prediction>;
     });
 
-    const result = await service.getDashboard({ id: baseUser.id } as User);
+    const result = await service.getDashboardKPIs({ id: baseUser.id } as User);
 
     expect(result.current_rank).toBe(0);
     expect(result.current_streak).toBe(0);
@@ -244,7 +244,7 @@ describe('AnalyticsService', () => {
       }) as SelectQueryBuilder<Prediction>;
     });
 
-    const result = await service.getDashboard({ id: baseUser.id } as User);
+    const result = await service.getDashboardKPIs({ id: baseUser.id } as User);
     expect(result.current_streak).toBe(0);
   });
 

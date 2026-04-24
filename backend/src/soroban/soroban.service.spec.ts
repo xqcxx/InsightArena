@@ -109,7 +109,7 @@ describe('SorobanService', () => {
         sequenceNumber: () => '1',
         accountId: () => testServerKeypair.publicKey(),
         incrementSequenceNumber: () => {},
-      } as any);
+      } as never);
 
       jest
         .spyOn(SorobanRpc.Server.prototype, 'simulateTransaction')
@@ -119,21 +119,21 @@ describe('SorobanService', () => {
           result: { auth: [] },
           minResourceFee: '100',
           _parsed: true,
-        } as any);
+        } as never);
 
       jest
         .spyOn(SorobanRpc.Server.prototype, 'sendTransaction')
         .mockResolvedValue({
           status: 'PENDING',
           hash: mockTxHash,
-        } as any);
+        } as never);
 
       jest
         .spyOn(SorobanRpc.Server.prototype, 'getTransaction')
         .mockResolvedValue({
           status: 'SUCCESS',
           hash: mockTxHash,
-        } as any);
+        } as never);
 
       const result = await service.refundCompetitionParticipant(
         testKeypair.publicKey(),
@@ -149,14 +149,14 @@ describe('SorobanService', () => {
         sequenceNumber: () => '1',
         accountId: () => testServerKeypair.publicKey(),
         incrementSequenceNumber: () => {},
-      } as any);
+      } as never);
 
       jest
         .spyOn(SorobanRpc.Server.prototype, 'simulateTransaction')
         .mockResolvedValue({
           error: 'Contract Error: EscrowEmpty',
           _parsed: true,
-        } as any);
+        } as never);
 
       await expect(
         service.refundCompetitionParticipant(
@@ -172,14 +172,14 @@ describe('SorobanService', () => {
         sequenceNumber: () => '1',
         accountId: () => testServerKeypair.publicKey(),
         incrementSequenceNumber: () => {},
-      } as any);
+      } as never);
 
       jest
         .spyOn(SorobanRpc.Server.prototype, 'simulateTransaction')
         .mockResolvedValue({
           error: 'Contract Error: InsufficientFunds',
           _parsed: true,
-        } as any);
+        } as never);
 
       await expect(
         service.refundCompetitionParticipant(

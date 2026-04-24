@@ -4,6 +4,7 @@ use crate::config;
 use crate::errors::InsightArenaError;
 use crate::escrow;
 use crate::market;
+use crate::reputation;
 use crate::storage_types::{DataKey, Dispute};
 
 fn bump_dispute(env: &Env, market_id: u64) {
@@ -87,6 +88,9 @@ pub fn raise_dispute(
         .persistent()
         .set(&DataKey::Dispute(market_id), &dispute);
     bump_dispute(&env, market_id);
+
+    // Update creator's dispute count and reputation
+    reputation::on_dispute_raised(&env, &market.creator);
 
     emit_dispute_raised(&env, market_id, &disputer, bond, now);
 

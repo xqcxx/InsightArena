@@ -70,7 +70,7 @@ export class AnalyticsService {
     return this.activityLogsRepository.save(log);
   }
 
-  async getDashboard(user: User): Promise<DashboardKpisDto> {
+  async getDashboardKPIs(user: User): Promise<DashboardKpisDto> {
     const fullUser = await this.usersRepository.findOne({
       where: { id: user.id },
     });
@@ -198,7 +198,14 @@ export class AnalyticsService {
     marketId: string,
     from?: string,
     to?: string,
+    interval?: string, // TODO: Implement interval-based aggregation
   ): Promise<MarketHistoryResponseDto> {
+    if (interval) {
+      this.logger.debug(
+        `Interval aggregation (${interval}) requested but not yet implemented`,
+      );
+    }
+
     const market = await this.marketsRepository.findOne({
       where: [{ id: marketId }, { on_chain_market_id: marketId }],
     });

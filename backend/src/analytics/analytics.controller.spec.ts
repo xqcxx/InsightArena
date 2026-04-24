@@ -3,10 +3,65 @@ import { AnalyticsController } from './analytics.controller';
 import { AnalyticsService } from './analytics.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { UserTrendsDto } from './dto/user-trends.dto';
+import { DashboardKpisDto } from './dto/dashboard-kpis.dto';
+import { MarketAnalyticsDto } from './dto/market-analytics.dto';
+import { MarketHistoryResponseDto } from './dto/market-history.dto';
+import { User } from '../users/entities/user.entity';
 
 describe('AnalyticsController', () => {
   let controller: AnalyticsController;
   let service: jest.Mocked<AnalyticsService>;
+
+  const mockUser: User = {
+    id: 'user-123',
+    stellar_address: 'GABC123',
+    username: 'testuser',
+    total_predictions: 10,
+    correct_predictions: 7,
+    reputation_score: 750,
+    total_winnings_stroops: BigInt(1000000),
+    total_staked_stroops: BigInt(500000),
+    is_banned: false,
+    created_at: new Date(),
+    updated_at: new Date(),
+  } as unknown as User;
+
+  const mockDashboardKpis: DashboardKpisDto = {
+    total_predictions: 10,
+    accuracy_rate: '70.0',
+    current_rank: 5,
+    total_rewards_earned_stroops: '1000000',
+    active_predictions_count: 3,
+    current_streak: 2,
+    reputation_score: 750,
+    tier: 'Gold Predictor',
+  };
+
+  const mockMarketAnalytics: MarketAnalyticsDto = {
+    market_id: 'market-123',
+    total_pool_stroops: '5000000',
+    participant_count: 25,
+    outcome_distribution: [
+      { outcome: 'YES', count: 15, percentage: 60 },
+      { outcome: 'NO', count: 10, percentage: 40 },
+    ],
+    time_remaining_seconds: 3600,
+  };
+
+  const mockMarketHistory: MarketHistoryResponseDto = {
+    market_id: 'market-123',
+    title: 'Test Market',
+    history: [
+      {
+        timestamp: new Date(),
+        prediction_volume: 10,
+        pool_size_stroops: '1000000',
+        participant_count: 10,
+        outcome_probabilities: [60.0, 40.0],
+      },
+    ],
+    generated_at: new Date(),
+  };
 
   const mockUserTrends: UserTrendsDto = {
     address: 'GABC123',
@@ -49,7 +104,7 @@ describe('AnalyticsController', () => {
             getUserTrends: jest.fn(),
             getMarketAnalytics: jest.fn(),
             getMarketHistory: jest.fn(),
-            getDashboard: jest.fn(),
+            getDashboardKPIs: jest.fn(),
             getCategoryAnalytics: jest.fn(),
           },
         },
@@ -70,6 +125,110 @@ describe('AnalyticsController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  describe('getDashboard', () => {
+    it('should return dashboard KPIs for authenticated user', async () => {
+      service.getDashboardKPIs.mockResolvedValue(mockDashboardKpis);
+
+      const result = await controller.getDashboard(mockUser);
+
+      expect(result).toEqual(mockDashboardKpis);
+      expect(service.getDashboardKPIs).toHaveBeenCalledWith(mockUser);
+    });
+
+    it('should return correct tier based on reputation score', async () => {
+      const goldTierKpis = {
+        ...mockDashboardKpis,
+        reputation_score: 750,
+        tier: 'Gold Predictor',
+      };
+      service.getDashboardKPIs.mockResolvedValue(goldTierKpis);
+
+      const result = await controller.getDashboard(mockUser);
+
+      expect(result.tier).toBe('Gold Predictor');
+      expect(result.reputation_score).toBe(750);
+    });
+  });
+
+  describe('getMarketAnalytics', () => {
+    it('should return market analytics for valid market ID', async () => {
+      service.getMarketAnalytics.mockResolvedValue(mockMarketAnalytics);
+
+      const result = await controller.getMarketAnalytics('market-123');
+
+      expect(result).toEqual(mockMarketAnalytics);
+      expect(service.getMarketAnalytics).toHaveBeenCalledWith('market-123');
+    });
+
+    it('should throw 404 for unknown market ID', async () => {
+      service.getMarketAnalytics.mockRejectedValue(
+        new Error('Market not found'),
+      );
+
+      await expect(
+        controller.getMarketAnalytics('unknown-market'),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('getMarketHistory', () => {
+    it('should return market history with default parameters', async () => {
+      service.getMarketHistory.mockResolvedValue(mockMarketHistory);
+
+      const result = await controller.getMarketHistory('market-123');
+
+      expect(result).toEqual(mockMarketHistory);
+      expect(service.getMarketHistory).toHaveBeenCalledWith(
+        'market-123',
+        undefined,
+        undefined,
+        undefined,
+      );
+    });
+
+    it('should return market history with query parameters', async () => {
+      service.getMarketHistory.mockResolvedValue(mockMarketHistory);
+
+      const result = await controller.getMarketHistory(
+        'market-123',
+        '2024-01-01',
+        '2024-01-31',
+        'day',
+      );
+
+      expect(result).toEqual(mockMarketHistory);
+      expect(service.getMarketHistory).toHaveBeenCalledWith(
+        'market-123',
+        '2024-01-01',
+        '2024-01-31',
+        'day',
+      );
+    });
+
+    it('should default to last 7 days if no range provided', async () => {
+      const historyWithDefaults = { ...mockMarketHistory };
+      service.getMarketHistory.mockResolvedValue(historyWithDefaults);
+
+      const result = await controller.getMarketHistory('market-123');
+
+      expect(result).toEqual(historyWithDefaults);
+      expect(service.getMarketHistory).toHaveBeenCalledWith(
+        'market-123',
+        undefined,
+        undefined,
+        undefined,
+      );
+    });
+
+    it('should throw 404 for unknown market ID', async () => {
+      service.getMarketHistory.mockRejectedValue(new Error('Market not found'));
+
+      await expect(
+        controller.getMarketHistory('unknown-market'),
+      ).rejects.toThrow();
+    });
   });
 
   describe('getUserTrends', () => {

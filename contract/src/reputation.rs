@@ -79,6 +79,15 @@ pub fn on_market_resolved(env: &Env, creator: &Address, participant_count: u32) 
     save_stats(env, creator, &stats);
 }
 
+/// Called when a dispute is raised against a market created by this creator.
+/// Increments dispute_count and recalculates reputation score.
+pub fn on_dispute_raised(env: &Env, creator: &Address) {
+    let mut stats = load_stats(env, creator);
+    stats.dispute_count = stats.dispute_count.saturating_add(1);
+    stats.reputation_score = calculate_creator_reputation(&stats);
+    save_stats(env, creator, &stats);
+}
+
 // ── View ──────────────────────────────────────────────────────────────────────
 
 pub fn get_creator_stats(env: Env, creator: Address) -> Result<CreatorStats, InsightArenaError> {
