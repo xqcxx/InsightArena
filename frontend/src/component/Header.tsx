@@ -2,17 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { ChevronDown, Copy } from "lucide-react";
-import { useOptionalWallet } from "@/context/WalletContext";
+import { useWallet } from "@/context/WalletContext";
 
 export default function Header() {
   const pathname = usePathname();
-  const router = useRouter();
-  const wallet = useOptionalWallet();
-  const address = wallet?.address ?? null;
-  const logout = wallet?.logout;
-  const isAuthenticated = Boolean(address);
+  const { address, isAuthenticated, logout, openConnectModal } = useWallet();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -141,10 +137,9 @@ export default function Header() {
   };
 
   const handleDisconnect = () => {
-    logout?.();
+    logout();
     setIsDropdownOpen(false);
     setIsMobileMenuOpen(false);
-    router.push("/");
   };
 
   return (
@@ -207,7 +202,11 @@ export default function Header() {
               </button>
 
               {!isAuthenticated ? (
-                <button className="hidden md:inline-flex rounded-lg bg-orange-500 px-6 py-2 font-semibold text-white hover:bg-orange-600">
+                <button
+                  type="button"
+                  className="hidden md:inline-flex rounded-lg bg-orange-500 px-6 py-2 font-semibold text-white hover:bg-orange-600"
+                  onClick={() => openConnectModal()}
+                >
                   Connect Wallet
                 </button>
               ) : (
@@ -344,7 +343,10 @@ export default function Header() {
               <button
                 type="button"
                 className="w-full rounded-lg bg-orange-500 px-4 py-3 font-semibold text-white hover:bg-orange-600"
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  openConnectModal();
+                }}
               >
                 Connect Wallet
               </button>

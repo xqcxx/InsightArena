@@ -1,43 +1,174 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+
+import ConnectWalletModal from "@/component/ConnectWalletModal";
 
 export interface AuthUser {
   username: string;
 }
 
-interface WalletContextType {
+export interface WalletContextValue {
+  // Wallet state
+  isFreighterInstalled: boolean;
   address: string | null;
+
+  // Auth state
+  isAuthenticated: boolean;
+  isAuthenticating: boolean;
   user: AuthUser | null;
+  token: string | null;
+  authError: string | null;
+
+  // Actions
+  openConnectModal: () => void;
+  closeConnectModal: () => void;
+  isConnectModalOpen: boolean;
+  authenticate: (
+    address: string,
+    signMessage: (msg: string) => Promise<string | null>
+  ) => Promise<boolean>;
   logout: () => void;
 }
 
-const WalletContext = createContext<WalletContextType | undefined>(undefined);
+const DEFAULT_CONTEXT_VALUE: WalletContextValue = {
+  isFreighterInstalled: false,
+  address: null,
+  isAuthenticated: false,
+  isAuthenticating: false,
+  user: null,
+  token: null,
+  authError: null,
+  openConnectModal: () => {},
+  closeConnectModal: () => {},
+  isConnectModalOpen: false,
+  authenticate: async () => false,
+  logout: () => {},
+};
+
+const WalletContext = createContext<WalletContextValue>(DEFAULT_CONTEXT_VALUE);
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
-  const [address, setAddress] = useState<string | null>(
-    "0x71A42D08022BEe33757145ff8bc6cb38c8950f27"
-  );
-  const [user, setUser] = useState<AuthUser | null>({ username: "Ayomide" });
+  const router = useRouter();
+  const [isFreighterInstalled, setIsFreighterInstalled] = useState(false);
+  const [address, setAddress] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const win = window as unknown as {
+      freighterApi?: unknown;
+      freighter?: unknown;
+    };
+
+    setIsFreighterInstalled(Boolean(win.freighterApi ?? win.freighter));
+  }, []);
+
+  const isAuthenticated = useMemo(() => Boolean(address && token), [address, token]);
+
+  const openConnectModal = useCallback(() => {
+    setAuthError(null);
+    setIsConnectModalOpen(true);
+  }, []);
+
+  const closeConnectModal = useCallback(() => {
+    setIsConnectModalOpen(false);
+  }, []);
+
+  const authenticate = useCallback<
+    WalletContextValue["authenticate"]
+  >(async (walletAddress, signMessage) => {
+    setIsAuthenticating(true);
+    setAuthError(null);
+
+    try {
+      const challenge = `arena_challenge_${Date.now()}`;
+      const signature = await signMessage(challenge);
+      if (!signature) {
+        setAuthError("Authentication failed: signature was not provided.");
+        return false;
+      }
+
+      setAddress(walletAddress);
+      setToken(`mock_jwt_${btoa(signature).slice(0, 24)}`);
+      setUser({ username: walletAddress.slice(0, 6) });
+      return true;
+    } catch (error) {
+      console.error("Wallet authentication failed:", error);
+      setAuthError("Authentication failed. Please try again.");
+      return false;
+    } finally {
+      setIsAuthenticating(false);
+    }
+  }, []);
 
   const logout = useCallback(() => {
     setAddress(null);
     setUser(null);
+    setToken(null);
+    setAuthError(null);
+    setIsConnectModalOpen(false);
+    router.push("/");
   }, []);
 
+  const handleModalSuccess = useCallback((walletAddress: string, jwt: string) => {
+    setAddress(walletAddress);
+    setToken(jwt);
+    setUser({ username: walletAddress.slice(0, 6) });
+    setAuthError(null);
+  }, []);
+
+  const value = useMemo<WalletContextValue>(
+    () => ({
+      isFreighterInstalled,
+      address,
+      isAuthenticated,
+      isAuthenticating,
+      user,
+      token,
+      authError,
+      openConnectModal,
+      closeConnectModal,
+      isConnectModalOpen,
+      authenticate,
+      logout,
+    }),
+    [
+      isFreighterInstalled,
+      address,
+      isAuthenticated,
+      isAuthenticating,
+      user,
+      token,
+      authError,
+      openConnectModal,
+      closeConnectModal,
+      isConnectModalOpen,
+      authenticate,
+      logout,
+    ]
+  );
+
   return (
-    <WalletContext.Provider value={{ address, user, logout }}>
+    <WalletContext.Provider value={value}>
       {children}
+      <ConnectWalletModal
+        isOpen={isConnectModalOpen}
+        onClose={closeConnectModal}
+        onSuccess={handleModalSuccess}
+      />
     </WalletContext.Provider>
   );
 }
 
 export function useWallet() {
-  const context = useContext(WalletContext);
-  if (context === undefined) {
-    throw new Error("useWallet must be used within WalletProvider");
-  }
-  return context;
+  return useContext(WalletContext);
 }
 
 export function useOptionalWallet() {

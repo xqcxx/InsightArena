@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 
 import { StandardPageLoadingSkeleton } from "@/component/loading-route-skeletons";
+import { WalletProvider } from "@/context/WalletContext";
 
 import "./globals.css";
 
@@ -86,12 +87,16 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased bg-[#141824] text-white">
-        <a href="#main-content" className="skip-link">
-          Skip to main content
-        </a>
-        <div id="main-content" tabIndex={-1}>
-          <Suspense fallback={<StandardPageLoadingSkeleton />}>{children}</Suspense>
-        </div>
+        <WalletProvider>
+          <a href="#main-content" className="skip-link">
+            Skip to main content
+          </a>
+          <div id="main-content" tabIndex={-1}>
+            <Suspense fallback={<StandardPageLoadingSkeleton />}>
+              {children}
+            </Suspense>
+          </div>
+        </WalletProvider>
       </body>
     </html>
   );
