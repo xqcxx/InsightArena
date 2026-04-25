@@ -234,13 +234,10 @@ export default function LeaderboardPage() {
   ];
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden text-white">
+    <PageBackground>
+      <Header />
 
-
-      <div className="relative z-10">
-        <Header />
-
-        <main className="mx-auto max-w-7xl px-6 pt-32 pb-16">
+      <main className="mx-auto max-w-7xl px-6 pt-32 pb-16">
           <div className="space-y-8">
             <section className="rounded-[2rem] border border-white/10 bg-[#111726]/80 p-8 backdrop-blur">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -332,10 +329,9 @@ export default function LeaderboardPage() {
               )}
             </section>
           </div>
-        </main>
+      </main>
 
-        <Footer />
-      </div>
-    </div>
+      <Footer />
+    </PageBackground>
   );
 }
