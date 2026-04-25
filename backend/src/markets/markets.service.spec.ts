@@ -699,3 +699,130 @@ describe('MarketsService.getPredictionStats', () => {
     );
   });
 });
+
+describe('MarketsService.cancelMarket', () => {
+  let service: MarketsService;
+  let marketsRepository: MockRepo;
+  let sorobanService: jest.Mocked<Pick<SorobanService, 'cancelMarket'>>;
+
+  const mockCreator = { id: 'creator-1', role: 'user' } as User;
+  const mockAdmin = { id: 'admin-1', role: 'admin' } as User;
+  const mockOther = { id: 'other-1', role: 'user' } as User;
+
+  const makeMarket = (overrides: Partial<Market> = {}): Market =>
+    ({
+      id: 'market-1',
+      on_chain_market_id: 'on-chain-1',
+      title: 'Test Market',
+      outcome_options: ['YES', 'NO'],
+      end_time: new Date(Date.now() + 60_000),
+      is_resolved: false,
+      is_cancelled: false,
+      creator: mockCreator,
+      ...overrides,
+    }) as Market;
+
+  beforeEach(async () => {
+    marketsRepository = {
+      create: jest.fn(),
+      save: jest.fn(),
+      findOne: jest.fn(),
+      find: jest.fn(),
+    };
+
+    sorobanService = { cancelMarket: jest.fn() };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        MarketsService,
+        { provide: getRepositoryToken(Market), useValue: marketsRepository },
+        { provide: getRepositoryToken(Comment), useValue: {} },
+        { provide: getRepositoryToken(MarketTemplate), useValue: {} },
+        { provide: getRepositoryToken(UserBookmark), useValue: {} },
+        { provide: getRepositoryToken(Prediction), useValue: {} },
+        { provide: UsersService, useValue: {} },
+        { provide: SorobanService, useValue: sorobanService },
+        { provide: DataSource, useValue: {} },
+      ],
+    }).compile();
+
+    service = module.get<MarketsService>(MarketsService);
+  });
+
+  it('throws ForbiddenException when caller is not creator or admin', async () => {
+    marketsRepository.findOne.mockResolvedValue(makeMarket());
+
+    await expect(service.cancelMarket('market-1', mockOther)).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(sorobanService.cancelMarket).not.toHaveBeenCalled();
+  });
+
+  it('throws BadRequestException when market is already resolved', async () => {
+    marketsRepository.findOne.mockResolvedValue(
+      makeMarket({ is_resolved: true }),
+    );
+
+    await expect(service.cancelMarket('market-1', mockCreator)).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(sorobanService.cancelMarket).not.toHaveBeenCalled();
+  });
+
+  it('throws BadRequestException when market is already cancelled', async () => {
+    marketsRepository.findOne.mockResolvedValue(
+      makeMarket({ is_cancelled: true }),
+    );
+
+    await expect(service.cancelMarket('market-1', mockCreator)).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(sorobanService.cancelMarket).not.toHaveBeenCalled();
+  });
+
+  it('throws BadRequestException when end_time has passed', async () => {
+    marketsRepository.findOne.mockResolvedValue(
+      makeMarket({ end_time: new Date(Date.now() - 60_000) }),
+    );
+
+    await expect(service.cancelMarket('market-1', mockCreator)).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(sorobanService.cancelMarket).not.toHaveBeenCalled();
+  });
+
+  it('allows creator to cancel their own market', async () => {
+    const market = makeMarket();
+    marketsRepository.findOne.mockResolvedValue(market);
+    sorobanService.cancelMarket.mockResolvedValue({ tx_hash: 'abc' });
+    marketsRepository.save.mockResolvedValue({ ...market, is_cancelled: true });
+
+    const result = await service.cancelMarket('market-1', mockCreator);
+
+    expect(sorobanService.cancelMarket).toHaveBeenCalledWith('on-chain-1');
+    expect(marketsRepository.save).toHaveBeenCalled();
+    expect(result.is_cancelled).toBe(true);
+  });
+
+  it('allows admin to cancel any market', async () => {
+    const market = makeMarket({ creator: mockOther });
+    marketsRepository.findOne.mockResolvedValue(market);
+    sorobanService.cancelMarket.mockResolvedValue({ tx_hash: 'def' });
+    marketsRepository.save.mockResolvedValue({ ...market, is_cancelled: true });
+
+    const result = await service.cancelMarket('market-1', mockAdmin);
+
+    expect(sorobanService.cancelMarket).toHaveBeenCalledWith('on-chain-1');
+    expect(result.is_cancelled).toBe(true);
+  });
+
+  it('throws BadGatewayException when Soroban call fails', async () => {
+    marketsRepository.findOne.mockResolvedValue(makeMarket());
+    sorobanService.cancelMarket.mockRejectedValue(new Error('RPC down'));
+
+    await expect(service.cancelMarket('market-1', mockCreator)).rejects.toThrow(
+      'Failed to cancel market on Soroban',
+    );
+    expect(marketsRepository.save).not.toHaveBeenCalled();
+  });
+});

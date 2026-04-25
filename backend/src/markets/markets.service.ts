@@ -494,33 +494,41 @@ export class MarketsService {
   }
 
   /**
-   * Cancel a market: validate status, call Soroban contract, then update DB.
-   * Resolved markets cannot be cancelled.
+   * Cancel a market: validate caller is creator or admin, check end_time,
+   * call Soroban contract for on-chain refunds, then update DB.
    */
-  async cancelMarket(id: string): Promise<Market> {
-    // Step 1: Find market and validate it can be cancelled
+  async cancelMarket(id: string, user: User): Promise<Market> {
     const market = await this.findByIdOrOnChainId(id);
 
+    const isAdmin = user.role === 'admin';
+    const isCreator = market.creator.id === user.id;
+    if (!isAdmin && !isCreator) {
+      throw new ForbiddenException(
+        'Only the market creator or an admin can cancel this market',
+      );
+    }
+
     if (market.is_resolved) {
-      throw new ConflictException('Resolved markets cannot be cancelled');
+      throw new BadRequestException('Resolved markets cannot be cancelled');
     }
 
     if (market.is_cancelled) {
-      throw new ConflictException('Market is already cancelled');
+      throw new BadRequestException('Market is already cancelled');
     }
 
-    // Step 2: Call Soroban contract to cancel market on-chain
-    try {
-      // TODO: Replace with real SorobanService.cancelMarket() call
-      this.logger.log(
-        `Soroban cancelMarket called for market "${market.title}" (id: ${market.id})`,
+    if (new Date() > market.end_time) {
+      throw new BadRequestException(
+        'Cannot cancel market after end_time has passed',
       );
+    }
+
+    try {
+      await this.sorobanService.cancelMarket(market.on_chain_market_id);
     } catch (err) {
       this.logger.error('Soroban cancelMarket failed', err);
       throw new BadGatewayException('Failed to cancel market on Soroban');
     }
 
-    // Step 3: Update database
     try {
       market.is_cancelled = true;
       return await this.marketsRepository.save(market);

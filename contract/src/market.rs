@@ -528,6 +528,17 @@ pub fn cancel_market(env: &Env, caller: Address, market_id: u64) -> Result<(), I
         }
     }
 
+    // Deactivate all conditional children so no orphaned markets remain.
+    let child_ids: Vec<u64> = env
+        .storage()
+        .persistent()
+        .get(&DataKey::ConditionalChildren(market_id))
+        .unwrap_or_else(|| Vec::new(env));
+
+    for child_id in child_ids.iter() {
+        let _ = deactivate_conditional_market(env, child_id);
+    }
+
     emit_market_cancelled(env, market_id, &caller);
 
     Ok(())
@@ -829,6 +840,65 @@ fn validate_no_circular_dependency(
     Ok(())
 }
 
+fn emit_conditional_deactivated(env: &Env, market_id: u64) {
+    env.events().publish(
+        (symbol_short!("cond"), symbol_short!("deactiv")),
+        market_id,
+    );
+}
+
+/// Deactivate a conditional market whose parent was cancelled or resolved to a
+/// non-matching outcome. Sets `is_activated = false`, marks the underlying
+/// `Market` as `is_cancelled = true`, refunds any stakes already placed, and
+/// emits a deactivation event.
+pub fn deactivate_conditional_market(
+    env: &Env,
+    market_id: u64,
+) -> Result<(), InsightArenaError> {
+    // Load and update the ConditionalMarket record.
+    let mut conditional: ConditionalMarket = env
+        .storage()
+        .persistent()
+        .get(&DataKey::ConditionalMarket(market_id))
+        .ok_or(InsightArenaError::MarketNotFound)?;
+
+    conditional.is_activated = false;
+
+    env.storage()
+        .persistent()
+        .set(&DataKey::ConditionalMarket(market_id), &conditional);
+
+    // Mark the underlying Market as cancelled and refund any stakes.
+    let mut market = get_market(env, market_id)?;
+
+    if !market.is_cancelled && !market.is_resolved {
+        market.is_cancelled = true;
+        env.storage()
+            .persistent()
+            .set(&DataKey::Market(market_id), &market);
+        bump_market(env, market_id);
+
+        let predictors = env
+            .storage()
+            .persistent()
+            .get::<DataKey, Vec<Address>>(&DataKey::PredictorList(market_id))
+            .unwrap_or_else(|| Vec::new(env));
+
+        for predictor in predictors.iter() {
+            let key = DataKey::Prediction(market_id, predictor.clone());
+            if let Some(prediction) =
+                env.storage().persistent().get::<DataKey, Prediction>(&key)
+            {
+                escrow::refund(env, &predictor, prediction.stake_amount)?;
+            }
+        }
+    }
+
+    emit_conditional_deactivated(env, market_id);
+
+    Ok(())
+}
+
 fn activate_conditional_market(env: &Env, market_id: u64) -> Result<(), InsightArenaError> {
     let mut conditional: ConditionalMarket = env
         .storage()
@@ -866,6 +936,9 @@ fn check_conditional_activation(env: &Env, parent_market_id: u64, resolved_outco
         {
             if &conditional.required_outcome == resolved_outcome {
                 let _ = activate_conditional_market(env, child_id);
+            } else {
+                // Parent resolved to a different outcome — deactivate this child.
+                let _ = deactivate_conditional_market(env, child_id);
             }
         }
     }

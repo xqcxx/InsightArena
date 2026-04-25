@@ -20,8 +20,6 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
-import { Roles } from '../common/decorators/roles.decorator';
-import { Role } from '../common/enums/role.enum';
 import { BanGuard } from '../common/guards/ban.guard';
 import { User } from '../users/entities/user.entity';
 import { BulkCreateMarketsDto } from './dto/bulk-create-markets.dto';
@@ -196,18 +194,18 @@ export class MarketsController {
   }
 
   @Delete(':id')
-  @Roles(Role.Admin)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Cancel a prediction market' })
+  @ApiOperation({ summary: 'Cancel a prediction market (creator or admin)' })
   @ApiResponse({ status: 200, description: 'Market cancelled', type: Market })
+  @ApiResponse({ status: 400, description: 'Market has already ended or is resolved' })
+  @ApiResponse({ status: 403, description: 'Caller is not creator or admin' })
   @ApiResponse({ status: 404, description: 'Market not found' })
-  @ApiResponse({
-    status: 409,
-    description: 'Market cannot be cancelled (already resolved)',
-  })
   @ApiResponse({ status: 502, description: 'Soroban contract call failed' })
-  async cancelMarket(@Param('id') id: string): Promise<Market> {
-    return this.marketsService.cancelMarket(id);
+  async cancelMarket(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+  ): Promise<Market> {
+    return this.marketsService.cancelMarket(id, user);
   }
 
   @Post(':id/comments')

@@ -1761,3 +1761,107 @@ fn test_security_conditional_chain_unknown_id_not_found() {
     let res = client.try_get_conditional_chain(&88_888_u64);
     assert!(matches!(res, Err(Ok(InsightArenaError::MarketNotFound))));
 }
+
+// ── Deactivation tests ────────────────────────────────────────────────────────
+
+#[test]
+fn test_conditional_market_deactivates_on_parent_cancel() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, _oracle) = deploy_with_admin_and_oracle(&env);
+    let creator = Address::generate(&env);
+
+    let parent_id = client.create_market(&creator, &default_params(&env));
+    let child_params = conditional_params(&env, &client, parent_id);
+    let child_id = client.create_conditional_market(
+        &creator,
+        &parent_id,
+        &symbol_short!("yes"),
+        &child_params,
+    );
+
+    // Sanity: child not yet activated before cancel.
+    let before = read_conditional(&env, &client, child_id);
+    assert!(!before.is_activated);
+
+    // Cancel the parent — should deactivate the child.
+    client.cancel_market(&admin, &parent_id);
+
+    let conditional = read_conditional(&env, &client, child_id);
+    assert!(!conditional.is_activated, "child should be deactivated");
+
+    let child_market = read_market(&env, &client, child_id);
+    assert!(child_market.is_cancelled, "child market should be cancelled");
+}
+
+#[test]
+fn test_conditional_market_deactivates_on_wrong_outcome() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, _admin, oracle) = deploy_with_admin_and_oracle(&env);
+    let creator = Address::generate(&env);
+
+    let parent_id = client.create_market(&creator, &default_params(&env));
+
+    // Two children: one waiting for "yes", one for "no".
+    let yes_child_id = client.create_conditional_market(
+        &creator,
+        &parent_id,
+        &symbol_short!("yes"),
+        &conditional_params(&env, &client, parent_id),
+    );
+    let no_child_id = client.create_conditional_market(
+        &creator,
+        &parent_id,
+        &symbol_short!("no"),
+        &conditional_params(&env, &client, parent_id),
+    );
+
+    // Advance past resolution_time and resolve to "yes".
+    let parent = read_market(&env, &client, parent_id);
+    set_timestamp(&env, parent.resolution_time + 1);
+    client.resolve_market(&oracle, &parent_id, &symbol_short!("yes"));
+
+    // The "yes" child should be activated.
+    let yes_cond = read_conditional(&env, &client, yes_child_id);
+    assert!(yes_cond.is_activated, "yes child should be activated");
+
+    // The "no" child should be deactivated and its market cancelled.
+    let no_cond = read_conditional(&env, &client, no_child_id);
+    assert!(!no_cond.is_activated, "no child should be deactivated");
+    let no_market = read_market(&env, &client, no_child_id);
+    assert!(no_market.is_cancelled, "no child market should be cancelled");
+}
+
+#[test]
+fn test_deactivated_market_rejects_new_predictions() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, _oracle) = deploy_with_admin_and_oracle(&env);
+    let creator = Address::generate(&env);
+    let predictor = Address::generate(&env);
+
+    let parent_id = client.create_market(&creator, &default_params(&env));
+    let child_params = conditional_params(&env, &client, parent_id);
+    let child_id = client.create_conditional_market(
+        &creator,
+        &parent_id,
+        &symbol_short!("yes"),
+        &child_params,
+    );
+
+    // Cancel parent — deactivates child (sets market.is_cancelled = true).
+    client.cancel_market(&admin, &parent_id);
+
+    // Attempt to predict on the cancelled child market.
+    let result = client.try_submit_prediction(
+        &predictor,
+        &child_id,
+        &symbol_short!("yes"),
+        &10_000_000_i128,
+    );
+    assert!(
+        matches!(result, Err(Ok(InsightArenaError::MarketAlreadyCancelled))),
+        "prediction on deactivated market should fail with MarketAlreadyCancelled"
+    );
+}

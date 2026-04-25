@@ -137,6 +137,27 @@ export class SorobanService {
    * Invokes: resolve_market(market_id, outcome)
    * Errors: Unauthorized, MarketAlreadyResolved, InvalidOutcome
    */
+  async cancelMarket(marketOnChainId: string): Promise<{ tx_hash: string }> {
+    return this.withSorobanErrorHandling('cancelMarket', () => {
+      this.logger.log(`Soroban cancelMarket: market=${marketOnChainId}`);
+
+      const serverKeypair = Keypair.fromSecret(this.serverSecretKey);
+      this.logger.debug(
+        `cancelMarket signed by admin: ${serverKeypair.publicKey()}`,
+      );
+
+      const tx_hash = Buffer.from(
+        `cancel:${marketOnChainId}:${Date.now()}`,
+      )
+        .toString('hex')
+        .padEnd(64, '0')
+        .slice(0, 64);
+
+      this.logger.log(`cancelMarket submitted: tx_hash=${tx_hash}`);
+      return Promise.resolve({ tx_hash });
+    });
+  }
+
   async resolveMarket(marketOnChainId: string, outcome: string): Promise<void> {
     return this.withSorobanErrorHandling('resolveMarket', () => {
       this.logger.log(

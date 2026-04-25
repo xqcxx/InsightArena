@@ -185,7 +185,12 @@ pub fn submit_prediction(
         .get(&DataKey::Market(market_id))
         .ok_or(InsightArenaError::MarketNotFound)?;
 
-    // ── Guard 3: market must not be expired ───────────────────────────────────
+    // ── Guard 3a: market must not be cancelled ────────────────────────────────
+    if market.is_cancelled {
+        return Err(InsightArenaError::MarketAlreadyCancelled);
+    }
+
+    // ── Guard 3b: market must not be expired ─────────────────────────────────
     let now = env.ledger().timestamp();
     if now >= market.end_time {
         return Err(InsightArenaError::MarketExpired);
